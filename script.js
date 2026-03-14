@@ -258,6 +258,8 @@ const expTrack = document.getElementById('expTrack');
 if (expTrack) {
     let dragging = false, startX, scrollL;
     const wrapper = expTrack.closest('.exp-scroll-wrapper');
+
+    // Track drag (existing)
     wrapper.addEventListener('mousedown', e => { dragging = true; startX = e.pageX; scrollL = wrapper.scrollLeft; wrapper.style.cursor = 'grabbing'; });
     wrapper.addEventListener('mouseup', () => { dragging = false; wrapper.style.cursor = 'grab'; });
     wrapper.addEventListener('mouseleave', () => { dragging = false; wrapper.style.cursor = ''; });
@@ -266,6 +268,82 @@ if (expTrack) {
         wrapper.scrollLeft = scrollL - (e.pageX - startX) * 2;
     });
     wrapper.style.cursor = 'grab';
+
+    // ━━━ SLIDER CONTROL ━━━
+    const slider = document.querySelector('.exp-slider-track');
+    const thumb = document.querySelector('.exp-slider-thumb');
+    const fill = document.querySelector('.exp-slider-fill');
+
+    if (slider && thumb && fill) {
+        let sliderDrag = false;
+
+        // Update slider position from scroll
+        const syncSlider = () => {
+            const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+            if (maxScroll <= 0) return;
+            const pct = (wrapper.scrollLeft / maxScroll) * 100;
+            thumb.style.left = pct + '%';
+            fill.style.width = pct + '%';
+        };
+
+        // Update scroll from slider position
+        const setScrollFromX = (clientX) => {
+            const rect = slider.getBoundingClientRect();
+            let pct = (clientX - rect.left) / rect.width;
+            pct = Math.max(0, Math.min(1, pct));
+            const maxScroll = wrapper.scrollWidth - wrapper.clientWidth;
+            wrapper.scrollLeft = pct * maxScroll;
+            syncSlider();
+        };
+
+        // Mouse events for slider thumb
+        thumb.addEventListener('mousedown', e => {
+            e.preventDefault();
+            sliderDrag = true;
+            thumb.classList.add('dragging');
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!sliderDrag) return;
+            e.preventDefault();
+            setScrollFromX(e.clientX);
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (sliderDrag) {
+                sliderDrag = false;
+                thumb.classList.remove('dragging');
+            }
+        });
+
+        // Click on track to jump
+        slider.addEventListener('click', e => {
+            if (e.target === thumb || thumb.contains(e.target)) return;
+            setScrollFromX(e.clientX);
+        });
+
+        // Touch events for slider thumb
+        thumb.addEventListener('touchstart', e => {
+            sliderDrag = true;
+            thumb.classList.add('dragging');
+        }, { passive: true });
+
+        document.addEventListener('touchmove', e => {
+            if (!sliderDrag) return;
+            setScrollFromX(e.touches[0].clientX);
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => {
+            if (sliderDrag) {
+                sliderDrag = false;
+                thumb.classList.remove('dragging');
+            }
+        });
+
+        // Sync slider when scrolling by any method
+        wrapper.addEventListener('scroll', syncSlider);
+        syncSlider();
+    }
 }
 
 // ━━━ MAGNETIC BUTTONS ━━━
